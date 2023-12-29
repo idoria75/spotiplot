@@ -12,7 +12,7 @@ try:
         uri = vars.get('redirect_uri')
 
 except BaseException as e:
-    print(e)
+    print("Failed to read user credentials. Error: ".format(e))
     exit()
 
 scope = "user-read-playback-state, user-read-currently-playing, user-read-recently-played"
