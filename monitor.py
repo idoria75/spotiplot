@@ -18,12 +18,16 @@ class Track():
     def __init__(self, a_name='', a_artists=[]):
         self.name = a_name
         self.artists = ''
-        for i in range(len(a_artists) - 1):
-            self.artists = self.artists + a_artists[i]['name'] + ', '
-        self.artists = self.artists + a_artists[-1]['name']
+        if(a_artists):
+            for i in range(len(a_artists) - 1):
+                self.artists = self.artists + a_artists[i]['name'] + ', '
+            self.artists = self.artists + a_artists[-1]['name']
+        else:
+            self.artists = 'invalid artist info'
 
-    def print(self):
-        print("{} by {}".format(self.name, self.artists))
+    def __str__(self):
+        return "{} by {}".format(self.name, self.artists)
+
 
 
 class Monitor():
@@ -63,19 +67,19 @@ class Monitor():
             tracks.append(Track(a_name=items[i]['track']['name'], a_artists=items[i]['track']['artists']))
 
         for track in tracks:
-            track.print()
+            print(track)
 
         # Get before and after unix timestamps
         # cursors = res_list['cursors']
         # print(cursors)
 
     def get_currently_playing(self):
-        results = self.sp.current_playback()['item']['name']
-        if (results is not None):
-            print(results)
-
+        result = self.sp.current_playback()['item']
+        t = Track(a_name=result['name'], a_artists=result['artists'])
+        print("Currently playing: {}".format(t))
 
 if __name__ == '__main__':
     monitor = Monitor()
     monitor.get_recently_played()
+    print("---")
     monitor.get_currently_playing()
