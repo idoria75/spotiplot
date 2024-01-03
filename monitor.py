@@ -74,9 +74,11 @@ class Monitor():
         # print(cursors)
 
     def get_currently_playing(self):
-        result = self.sp.current_playback()['item']
-        t = Track(a_name=result['name'], a_artists=result['artists'])
-        print("Currently playing: {}".format(t))
+        result = self.sp.current_playback()
+        if result is not None:
+            item = result['item']
+            t = Track(a_name=item['name'], a_artists=item['artists'])
+            print("Currently playing: {}".format(t))
 
 if __name__ == '__main__':
     monitor = Monitor()
