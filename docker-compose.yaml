@@ -1,0 +1,12 @@
+services:
+  mysql:
+    image: mysql:8.0-debian
+    volumes:
+      - ./db:/var/lib/mysql
+    ports:
+      - 5432:5432
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_PASSWORD_FILE: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: spotiplot
+      MYSQL_USER: spotiplot
