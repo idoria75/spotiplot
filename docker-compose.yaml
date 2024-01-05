@@ -3,6 +3,7 @@ services:
     image: mysql:8.0-oracle
     volumes:
       - ./db:/var/lib/mysql
+      - ./mysql/init-scripts:/docker-entrypoint-initdb.d
     ports:
       - 5432:5432
       - 3306:3306
