@@ -160,5 +160,5 @@ cython_debug/
 #.idea/
 
 # Ignore database files
-db/*
+mysql/db/*
 *.env
