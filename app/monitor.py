@@ -1,24 +1,25 @@
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-
 from yaml import safe_load
 
-PATH_TO_KEYS = '/usr/local/keys/spotiplot.env'
+PATH_TO_KEYS = '/app/spotiplot.env'
+# PATH_TO_KEYS = '/usr/local/keys/spotiplot.env'
 
-## TODO
-## Store list of tracks
-## Store number of times played
-## Check if shuffle is on before storing new entries
-## Store continuously
-## Store songs played before and after an execution
-## Count number of tracks played by a single artist
-## Properly store tracks in a DB or log file (with parser)
+# TODO
+# Store list of tracks
+# Store number of times played
+# Check if shuffle is on before storing new entries
+# Store continuously
+# Store songs played before and after an execution
+# Count number of tracks played by a single artist
+# Properly store tracks in a DB or log file (with parser)
+
 
 class Track():
     def __init__(self, a_name='', a_artists=[]):
         self.name = a_name
         self.artists = ''
-        if(a_artists):
+        if (a_artists):
             for i in range(len(a_artists) - 1):
                 self.artists = self.artists + a_artists[i]['name'] + ', '
             self.artists = self.artists + a_artists[-1]['name']
@@ -29,10 +30,10 @@ class Track():
         return "{} by {}".format(self.name, self.artists)
 
 
-
 class Monitor():
 
     def __init__(self):
+        print("Starting monitor")
         self.authenticate()
         self.last_played = []
 
@@ -49,13 +50,20 @@ class Monitor():
             auth_manager = SpotifyOAuth(scope=scope,
                                         client_id=id,
                                         client_secret=secret,
-                                        redirect_uri=uri)
+                                        redirect_uri=uri,
+                                        open_browser=False,
+                                        cache_path="cache/.cache")
+
+            print("ID: {}\n, Secret: {}\n, URI: {}".format(id, secret, uri))
 
             self.sp = spotipy.Spotify(auth_manager=auth_manager)
+            self.sp.current_playback()
 
         except BaseException as e:
-            print("Failed to read user credentials. Error: ".format(e))
+            print("Failed to read user credentials. Error: {}".format(e))
             exit()
+
+        print("Authentication succeeded")
 
     def get_recently_played(self):
         res_list = self.sp.current_user_recently_played(limit=50)
@@ -79,6 +87,7 @@ class Monitor():
             item = result['item']
             t = Track(a_name=item['name'], a_artists=item['artists'])
             print("Currently playing: {}".format(t))
+
 
 if __name__ == '__main__':
     monitor = Monitor()
