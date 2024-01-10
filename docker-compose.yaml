@@ -5,16 +5,15 @@ services:
       - ./mysql/init-scripts:/docker-entrypoint-initdb.d
       - ./mysql/db:/var/lib/mysql
     ports:
-      - 5432:5432
       - 3306:3306
     restart: always
-    networks:
-      - spotiplot-network
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
       MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
       MYSQL_DATABASE: spotiplot
       MYSQL_USER: spotiplot
+    networks:
+      - spotiplot-network
 
   adminer:
     image: adminer
@@ -33,6 +32,10 @@ services:
     command: ["python", "-u", "monitor.py"]
     volumes:
       - ./app/cache:/app/cache
+    networks:
+      - spotiplot-network
+    environment:
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
 
 networks:
   spotiplot-network:

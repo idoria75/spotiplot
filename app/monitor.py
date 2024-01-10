@@ -1,9 +1,21 @@
-import spotipy
+import os
 import time
+import spotipy
+import mysql.connector
 from spotipy.oauth2 import SpotifyOAuth
 from yaml import safe_load
 
 PATH_TO_KEYS = '/app/spotiplot.env'
+
+db_pass = os.getenv('MYSQL_PASSWORD')
+
+db_config = {
+    'user': 'spotiplot',
+    'password': db_pass,
+    'host': 'mysql',
+    'port': 3306,
+    'database': 'spotiplot'
+}
 
 
 class Track():
