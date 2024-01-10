@@ -2,16 +2,6 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from yaml import safe_load
 
-# TODO
-# Store list of tracks
-# Store number of times played
-# Check if shuffle is on before storing new entries
-# Store continuously
-# Store songs played before and after an execution
-# Count number of tracks played by a single artist
-# Properly store tracks in a DB or log file (with parser)
-# Deprecate python-dotenv
-
 PATH_TO_KEYS = '/app/spotiplot.env'
 
 
