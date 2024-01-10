@@ -1,4 +1,5 @@
 import spotipy
+import time
 from spotipy.oauth2 import SpotifyOAuth
 from yaml import safe_load
 
@@ -72,15 +73,21 @@ class Monitor():
         # print(cursors)
 
     def get_currently_playing(self):
-        result = self.sp.current_playback()
-        if result is not None:
-            item = result['item']
-            t = Track(a_name=item['name'], a_artists=item['artists'])
-            print("Currently playing: {}".format(t))
+        while True:
+            try:
+                result = self.sp.current_playback()
+                if result is not None:
+                    item = result['item']
+                    t = Track(a_name=item['name'], a_artists=item['artists'])
+                    print("---")
+                    print("Currently playing: {}".format(t))
+            except BaseException as e:
+                print("Error getting current playback.")
+                print("Error: {}".format(e))
+            time.sleep(2)
 
 
 if __name__ == '__main__':
     monitor = Monitor()
     monitor.get_recently_played()
-    print("---")
     monitor.get_currently_playing()
