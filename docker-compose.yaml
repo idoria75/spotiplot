@@ -30,7 +30,7 @@ services:
     image: spotiplot_monitor
     ports:
       - 8083:8083
-    command: ["python", "monitor.py"]
+    command: ["python", "-u", "monitor.py"]
     volumes:
       - ./app/cache:/app/cache
 
