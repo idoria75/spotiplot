@@ -2,9 +2,6 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from yaml import safe_load
 
-PATH_TO_KEYS = '/app/spotiplot.env'
-# PATH_TO_KEYS = '/usr/local/keys/spotiplot.env'
-
 # TODO
 # Store list of tracks
 # Store number of times played
@@ -13,6 +10,9 @@ PATH_TO_KEYS = '/app/spotiplot.env'
 # Store songs played before and after an execution
 # Count number of tracks played by a single artist
 # Properly store tracks in a DB or log file (with parser)
+# Deprecate python-dotenv
+
+PATH_TO_KEYS = '/app/spotiplot.env'
 
 
 class Track():

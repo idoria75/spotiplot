@@ -3,7 +3,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from yaml import safe_load
 
 PATH_TO_KEYS = '/app/spotiplot.env'
-# PATH_TO_KEYS = '/usr/local/keys/spotiplot.env'
+
 
 class Authenticator():
 
@@ -35,6 +35,7 @@ class Authenticator():
 
         res = self.sp.current_playback()
         print("Authentication succeeded")
+
 
 if __name__ == '__main__':
     a = Authenticator()
