@@ -1,13 +1,12 @@
 services:
   mysql:
     image: mysql:8.0-oracle
+    restart: always
+    ports:
+      - 3306:3306
     volumes:
       - ./mysql/init-scripts:/docker-entrypoint-initdb.d
       - ./mysql/db:/var/lib/mysql
-    ports:
-      - 5432:5432
-      - 3306:3306
-    restart: always
     networks:
       - spotiplot-network
     environment:
@@ -21,18 +20,21 @@ services:
     restart: always
     ports:
       - 9090:8080
-    environment:
-      ADMINER_DEFAULT_SERVER: mysql
     networks:
       - spotiplot-network
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
 
   monitor:
     image: spotiplot_monitor
+    restart: always
     ports:
       - 8083:8083
+    networks:
+      - spotiplot-network
+    environment:
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
     command: ["python", "-u", "monitor.py"]
-    volumes:
-      - ./app/cache:/app/cache
 
 networks:
   spotiplot-network:

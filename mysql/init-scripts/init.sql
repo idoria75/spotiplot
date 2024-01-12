@@ -11,6 +11,6 @@ CREATE TABLE listening_activity (
 );
 
 -- Insert sample data
-INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 1', 'Artist 1', 'Album 1');
-INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 3', 'Artist 2', 'Album 1');
-INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 2', 'Artist 3', 'Album X');
+-- INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 1', 'Artist 1', 'Album 1');
+-- INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 3', 'Artist 2', 'Album 1');
+-- INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 2', 'Artist 3', 'Album X');
