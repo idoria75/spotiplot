@@ -202,8 +202,6 @@ class Monitor():
 
 if __name__ == '__main__':
     monitor = Monitor()
-    # monitor.get_recently_played()
-    # monitor.update_currently_playing()
     monitor.get_entries_from_db()
 
     while (True):
