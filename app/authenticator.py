@@ -18,14 +18,16 @@ class Authenticator():
 
             self.scope = scope = "user-read-playback-state, user-read-currently-playing, user-read-recently-played"
 
+            ch = spotipy.CacheFileHandler("cache/.cache")
+
             auth_manager = SpotifyOAuth(scope=scope,
                                         client_id=id,
                                         client_secret=secret,
                                         redirect_uri=uri,
                                         open_browser=False,
-                                        cache_path="cache/.cache")
+                                        cache_handler=ch)
 
-            print("ID: {}\n, Secret: {}\n, URI: {}".format(id, secret, uri))
+            print("ID: {}\n Secret: {}\n URI: {}".format(id, secret, uri))
 
             self.sp = spotipy.Spotify(auth_manager=auth_manager)
 
