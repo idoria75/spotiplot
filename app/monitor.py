@@ -20,10 +20,45 @@ db_config = {
 
 
 class Track:
-    def __init__(self, a_name="", a_artists=[], a_album=""):
-        self.name = a_name
+    def __init__(
+        self,
+        a_title="",
+        a_artists="",
+        a_album="",
+        a_duration_ms=0,
+        a_acousticness=0.0,
+        a_danceability=0.0,
+        a_energy=0.0,
+        a_instrumentalness=0.0,
+        a_musical_key=0,
+        a_liveness=0.0,
+        a_loudness=0.0,
+        a_speechiness=0.0,
+        a_tempo=0.0,
+        a_time_signature=0,
+        a_valence=0.0,
+        a_uri="",
+    ):
+        if a_uri == "":
+            raise ValueError("URI cannot be None.")
+
+        self.title = a_title
         self.artists = ""
         self.album = a_album
+        self.duration_ms = a_duration_ms
+        self.acousticness = a_acousticness
+        self.danceability = a_danceability
+        self.energy = a_energy
+        self.instrumentalness = a_instrumentalness
+        self.musical_key = a_musical_key
+        self.liveness = a_liveness
+        self.loudness = a_loudness
+        self.speechiness = a_speechiness
+        self.tempo = a_tempo
+        self.time_signature = a_time_signature
+        self.valence = a_valence
+        self.uri = a_uri
+
         if a_artists:
             for i in range(len(a_artists) - 1):
                 self.artists = self.artists + a_artists[i]["name"] + ", "
@@ -32,22 +67,40 @@ class Track:
             self.artists = "invalid artist info"
 
     def __str__(self):
-        return "{} by {}".format(self.name, self.artists)
+        return "{} by {} - URI: {}".format(self.title, self.artists, self.uri)
 
     def __eq__(self, a_other):
         if a_other is not None:
             return (
-                self.name == a_other.name
+                self.title == a_other.title
                 and self.artists == a_other.artists
                 and self.album == a_other.album
             )
         else:
             return False
 
+    def print_properties(self):
+        print("Title: {}".format(self.title))
+        print("Artists: {}".format(self.artists))
+        print("Album: {}".format(self.album))
+        print("Duration: {}".format(self.duration_ms))
+        print("Acousticness: {}".format(self.acousticness))
+        print("Danceability: {}".format(self.danceability))
+        print("Energy: {}".format(self.energy))
+        print("Instrumentalness: {}".format(self.instrumentalness))
+        print("Musical Key: {}".format(self.musical_key))
+        print("Liveness: {}".format(self.liveness))
+        print("Loudness: {}".format(self.loudness))
+        print("Speechiness: {}".format(self.speechiness))
+        print("Tempo: {}".format(self.tempo))
+        print("Time Signature: {}".format(self.time_signature))
+        print("Valence: {}".format(self.valence))
+        print("URI: {}".format(self.uri))
+
 
 class Monitor:
     def __init__(self):
-        print("Starting monitor")
+        print("Starting spotiplot monitor")
         # self.authenticate_db()
         self.authenticate_spotify()
         self.last_played = []
@@ -98,16 +151,17 @@ class Monitor:
                 cache_handler=ch,
             )
 
-            print("ID: {}\n Secret: {}\n URI: {}".format(id, secret, uri))
+            # print("ID: {}\n Secret: {}\n URI: {}".format(id, secret, uri))
 
             self.sp = spotipy.Spotify(auth_manager=auth_manager)
-            self.sp.current_playback()
+            # self.sp.current_playback()
+            self.current_user = self.sp.current_user()["display_name"]
 
         except BaseException as e:
             print("Failed to read user credentials. Error: {}".format(e))
             exit()
 
-        print("Authentication succeeded")
+        print("Authentication succeeded for user: {}".format(self.current_user))
 
     def get_recently_played(self):
         res_list = self.sp.current_user_recently_played(limit=10)
@@ -118,7 +172,7 @@ class Monitor:
         for i in range(len(items)):
             tracks.append(
                 Track(
-                    a_name=items[i]["track"]["name"],
+                    a_title=items[i]["track"]["name"],
                     a_artists=items[i]["track"]["artists"],
                 )
             )
@@ -135,16 +189,29 @@ class Monitor:
             result = self.sp.current_playback()
             if result is not None:
                 item = result["item"]
+                features = self.sp.audio_features(tracks=[item["uri"]])[0]
+
                 t = Track(
-                    a_name=item["name"],
+                    a_title=item["name"],
                     a_artists=item["artists"],
                     a_album=item["album"]["name"],
+                    a_uri=item["uri"],
+                    a_duration_ms=item["duration_ms"],
+                    a_acousticness=features["acousticness"],
+                    a_danceability=features["danceability"],
+                    a_energy=features["energy"],
+                    a_instrumentalness=features["instrumentalness"],
+                    a_musical_key=features["key"],
+                    a_liveness=features["liveness"],
+                    a_loudness=features["loudness"],
+                    a_speechiness=features["speechiness"],
+                    a_tempo=features["tempo"],
+                    a_time_signature=features["time_signature"],
+                    a_valence=features["valence"],
                 )
                 print("---")
-                print("Shuffle state: {}".format(result["shuffle_state"]))
-                # print("Currently playing: {}".format(t))
-                # print("Currently played: {}".format(self.current_track))
-                # print("Last played: {}".format(self.last_track))
+                # print("Shuffle state: {}".format(result["shuffle_state"]))
+
                 if self.current_track is None:
                     self.current_track = t
                     self.last_track = t
@@ -180,7 +247,7 @@ class Monitor:
             try:
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
-                insert_query = "INSERT INTO listening_activity (song_title, artist, album) VALUES (%s, %s, %s)"
+                insert_query = "INSERT INTO listening_activity (track_title, artist, album) VALUES (%s, %s, %s)"
                 data_to_insert = (a_track.name, a_track.artists, a_track.album)
 
                 cursor.execute(insert_query, data_to_insert)
@@ -213,17 +280,19 @@ class Monitor:
         cursor.close()
         conn.close()
 
-    def get_current_user_display_name(self):
-        return self.sp.current_user()["display_name"]
+    # def get_current_user_display_name(self):
+    #     return
 
 
 if __name__ == "__main__":
     monitor = Monitor()
     print("---")
-    print(monitor.get_current_user_display_name())
-
-    monitor.get_entries_from_db()
+    # monitor.get_currently_playing()
+    # monitor.get_entries_from_db()
 
     while True:
-        monitor.write_entry_to_db(monitor.get_currently_playing())
+        # monitor.write_entry_to_db(monitor.get_currently_playing())
+        monitor.get_currently_playing()
+        # if t is not None:
+        #     print(t)
         time.sleep(5)
