@@ -5,10 +5,11 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY monitor.py /app/
+RUN ["mkdir", "cache"]
+
 COPY authenticator.py /app/
 COPY spotiplot.env /app/
 
-RUN ["mkdir", "cache"]
+COPY monitor.py /app/
 
 CMD ["python", "authenticator.py"]
