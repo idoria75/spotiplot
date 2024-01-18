@@ -20,44 +20,26 @@ db_config = {
 
 
 class Track:
-    def __init__(
-        self,
-        a_title="",
-        a_artists="",
-        a_album="",
-        a_duration_ms=0,
-        a_acousticness=0.0,
-        a_danceability=0.0,
-        a_energy=0.0,
-        a_instrumentalness=0.0,
-        a_musical_key=0,
-        a_liveness=0.0,
-        a_loudness=0.0,
-        a_speechiness=0.0,
-        a_tempo=0.0,
-        a_time_signature=0,
-        a_valence=0.0,
-        a_uri="",
-    ):
+    def __init__(self, a_title="", a_artists="", a_album="", a_uri="", a_duration_ms=0):
         if a_uri == "":
             raise ValueError("URI cannot be None.")
 
         self.title = a_title
         self.artists = ""
         self.album = a_album
-        self.duration_ms = a_duration_ms
-        self.acousticness = a_acousticness
-        self.danceability = a_danceability
-        self.energy = a_energy
-        self.instrumentalness = a_instrumentalness
-        self.musical_key = a_musical_key
-        self.liveness = a_liveness
-        self.loudness = a_loudness
-        self.speechiness = a_speechiness
-        self.tempo = a_tempo
-        self.time_signature = a_time_signature
-        self.valence = a_valence
         self.uri = a_uri
+        self.duration_ms = a_duration_ms
+        self.acousticness = 0.0
+        self.danceability = 0.0
+        self.energy = 0.0
+        self.instrumentalness = 0.0
+        self.musical_key = 0
+        self.liveness = 0
+        self.loudness = 0
+        self.speechiness = 0.0
+        self.tempo = 0.0
+        self.time_signature = 0
+        self.valence = 0.0
 
         if a_artists:
             for i in range(len(a_artists) - 1):
@@ -71,13 +53,35 @@ class Track:
 
     def __eq__(self, a_other):
         if a_other is not None:
-            return (
-                self.title == a_other.title
-                and self.artists == a_other.artists
-                and self.album == a_other.album
-            )
+            return self.uri == a_other.uri
         else:
             return False
+
+    def set_audio_features(
+        self,
+        a_acousticness=0.0,
+        a_danceability=0.0,
+        a_energy=0.0,
+        a_instrumentalness=0.0,
+        a_musical_key=0,
+        a_liveness=0.0,
+        a_loudness=0.0,
+        a_speechiness=0.0,
+        a_tempo=0.0,
+        a_time_signature=0,
+        a_valence=0.0,
+    ):
+        self.acousticness = a_acousticness
+        self.danceability = a_danceability
+        self.energy = a_energy
+        self.instrumentalness = a_instrumentalness
+        self.musical_key = a_musical_key
+        self.liveness = a_liveness
+        self.loudness = a_loudness
+        self.speechiness = a_speechiness
+        self.tempo = a_tempo
+        self.time_signature = a_time_signature
+        self.valence = a_valence
 
     def print_properties(self):
         print("Title: {}".format(self.title))
@@ -244,28 +248,14 @@ class Monitor:
             result = self.sp.current_playback()
             if result is not None:
                 item = result["item"]
-                features = self.sp.audio_features(tracks=[item["uri"]])[0]
-
                 t = Track(
                     a_title=item["name"],
                     a_artists=item["artists"],
                     a_album=item["album"]["name"],
                     a_uri=item["uri"],
                     a_duration_ms=item["duration_ms"],
-                    a_acousticness=features["acousticness"],
-                    a_danceability=features["danceability"],
-                    a_energy=features["energy"],
-                    a_instrumentalness=features["instrumentalness"],
-                    a_musical_key=features["key"],
-                    a_liveness=features["liveness"],
-                    a_loudness=features["loudness"],
-                    a_speechiness=features["speechiness"],
-                    a_tempo=features["tempo"],
-                    a_time_signature=features["time_signature"],
-                    a_valence=features["valence"],
                 )
                 print("---")
-                # print("Shuffle state: {}".format(result["shuffle_state"]))
 
                 if self.current_track is None:
                     self.current_track = t
@@ -349,6 +339,22 @@ class Monitor:
     def write_track_to_db(self, a_track=None):
         if a_track is not None:
             try:
+                features = self.sp.audio_features(a_track.uri)[0]
+
+                a_track.set_audio_features(
+                    a_acousticness=features["acousticness"],
+                    a_danceability=features["danceability"],
+                    a_energy=features["energy"],
+                    a_instrumentalness=features["instrumentalness"],
+                    a_musical_key=features["key"],
+                    a_liveness=features["liveness"],
+                    a_loudness=features["loudness"],
+                    a_speechiness=features["speechiness"],
+                    a_tempo=features["tempo"],
+                    a_time_signature=features["time_signature"],
+                    a_valence=features["valence"],
+                )
+
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
                 # insert_query = "INSERT INTO listening_activity (track_title, artist, album) VALUES (%s, %s, %s)"
@@ -459,4 +465,4 @@ if __name__ == "__main__":
 
     while True:
         monitor.get_currently_playing()
-        time.sleep(5)
+        time.sleep(15)
