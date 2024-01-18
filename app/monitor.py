@@ -183,7 +183,6 @@ class Monitor:
             row_user = row[1]
             if self.current_user == row_user:
                 user_id = row_id
-                print("Found user {} with ID {}".format(self.current_user, user_id))
                 break
 
         cursor.close()
@@ -281,7 +280,7 @@ class Monitor:
                     self.last_track = self.current_track
                     self.current_track = t
                     print("Updated current song to: {}".format(self.current_track))
-                    self.write_entry_to_db(a_track=self.current_track)
+                    self.record_activity(self.current_track)
                     return True
             else:
                 return False
@@ -299,7 +298,55 @@ class Monitor:
         else:
             return None
 
-    def write_entry_to_db(self, a_track=None):
+    def record_activity(self, a_track):
+        id = self.get_track_db_id(a_track)
+
+        if id > 0:
+            res = self.write_activity_to_db(id)
+
+        # TODO: Error handling
+        else:
+            res = False
+
+        if res:
+            print("Successfully wrote id {} to db".format(id))
+
+    def get_track_db_id(self, a_track=None):
+        # print("Looking for track: {}".format(a_track))
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        id = 0
+
+        # TODO: Add exception handler and else for invalid track
+        if a_track is not None and a_track.uri is not None:
+            query = "SELECT * FROM tracks WHERE uri = %s"
+            cursor.execute(query, [a_track.uri])
+            result = cursor.fetchall()  # TODO: Can this be replaced by fetchone?
+
+            if result:
+                if len(result) > 1:
+                    print(
+                        "WARNING: More than one entry for the same track {}".format(
+                            a_track.title
+                        )
+                    )
+                for track in result:
+                    if id == 0:
+                        id = track[0]
+                        break
+
+            cursor.close()
+            conn.close()
+
+            if id > 0:
+                return id
+
+            else:
+                print("Could not find track {} in db".format(a_track))
+                return self.write_track_to_db(a_track)
+
+    def write_track_to_db(self, a_track=None):
         if a_track is not None:
             try:
                 conn = mysql.connector.connect(**db_config)
@@ -349,10 +396,40 @@ class Monitor:
                 cursor.execute(insert_query, data_to_insert)
                 conn.commit()
 
+                id = cursor.lastrowid
+
                 cursor.close()
                 conn.close()
 
                 print("Wrote {} to db".format(a_track.title))
+                return id
+
+            except BaseException as e:
+                print("Exception: {}".format(e))
+                return 0
+
+        else:
+            print("Nothing to write to DB!")
+            return 0
+
+    # TODO: Improve cursor and conn close reliability
+    def write_activity_to_db(self, a_track_db_id):
+        if a_track_db_id > 0:
+            try:
+                conn = mysql.connector.connect(**db_config)
+                cursor = conn.cursor()
+                insert_query = (
+                    "INSERT INTO listening_activity (user_id, track_id) VALUES (%s, %s)"
+                )
+                data_to_insert = [self.get_user_db_id(), a_track_db_id]
+
+                cursor.execute(insert_query, data_to_insert)
+                conn.commit()
+
+                cursor.close()
+                conn.close()
+
+                print("Added track {} to listening activity".format(a_track_db_id))
                 return True
 
             except BaseException as e:
