@@ -101,11 +101,18 @@ class Track:
 class Monitor:
     def __init__(self):
         print("Starting spotiplot monitor")
-        # self.authenticate_db()
+        self.authenticate_db()
         self.authenticate_spotify()
+
         self.last_played = []
         self.current_track = None
         self.last_track = None
+
+        self.user_db_id = self.get_user_db_id()
+        if self.user_db_id == 0:
+            print("User not in the database")
+            if not self.insert_user_db():
+                exit()
 
     def authenticate_db(self):
         connected = False
@@ -154,7 +161,6 @@ class Monitor:
             # print("ID: {}\n Secret: {}\n URI: {}".format(id, secret, uri))
 
             self.sp = spotipy.Spotify(auth_manager=auth_manager)
-            # self.sp.current_playback()
             self.current_user = self.sp.current_user()["display_name"]
 
         except BaseException as e:
@@ -162,6 +168,56 @@ class Monitor:
             exit()
 
         print("Authentication succeeded for user: {}".format(self.current_user))
+
+    def get_user_db_id(self):
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM users")
+        rows = cursor.fetchall()
+
+        user_id = 0
+
+        for row in rows:
+            row_id = row[0]
+            row_user = row[1]
+            if self.current_user == row_user:
+                user_id = row_id
+                print("Found user {} with ID {}".format(self.current_user, user_id))
+                break
+
+        cursor.close()
+        conn.close()
+        return user_id
+
+    def insert_user_db(self):
+        if self.current_user is not None:
+            try:
+                conn = mysql.connector.connect(**db_config)
+                cursor = conn.cursor()
+                insert_query = "INSERT INTO users (user_name) VALUES (%s)"
+                data_to_insert = [self.current_user]
+
+                cursor.execute(insert_query, data_to_insert)
+                conn.commit()
+
+                cursor.close()
+                conn.close()
+
+                print(
+                    "Added user {} to db with id {}".format(
+                        self.current_user, self.get_user_db_id()
+                    )
+                )
+                return True
+
+            except BaseException as e:
+                print("Exception: {}".format(e))
+                return False
+
+        else:
+            print("Nothing to write to DB!")
+            return False
 
     def get_recently_played(self):
         res_list = self.sp.current_user_recently_played(limit=10)
@@ -225,6 +281,7 @@ class Monitor:
                     self.last_track = self.current_track
                     self.current_track = t
                     print("Updated current song to: {}".format(self.current_track))
+                    self.write_entry_to_db(a_track=self.current_track)
                     return True
             else:
                 return False
@@ -247,8 +304,47 @@ class Monitor:
             try:
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
-                insert_query = "INSERT INTO listening_activity (track_title, artist, album) VALUES (%s, %s, %s)"
-                data_to_insert = (a_track.name, a_track.artists, a_track.album)
+                # insert_query = "INSERT INTO listening_activity (track_title, artist, album) VALUES (%s, %s, %s)"
+                insert_query = """
+                    INSERT INTO tracks (
+                        track_title,
+                        artists,
+                        album,
+                        duration_ms,
+                        acousticness,
+                        danceability,
+                        energy,
+                        instrumentalness,
+                        musical_key,
+                        liveness,
+                        loudness,
+                        speechiness,
+                        tempo,
+                        time_signature,
+                        valence,
+                        uri
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    );
+                    """
+                data_to_insert = (
+                    a_track.title,
+                    a_track.artists,
+                    a_track.album,
+                    a_track.duration_ms,
+                    a_track.acousticness,
+                    a_track.danceability,
+                    a_track.energy,
+                    a_track.instrumentalness,
+                    a_track.musical_key,
+                    a_track.liveness,
+                    a_track.loudness,
+                    a_track.speechiness,
+                    a_track.tempo,
+                    a_track.time_signature,
+                    a_track.valence,
+                    a_track.uri,
+                )
 
                 cursor.execute(insert_query, data_to_insert)
                 conn.commit()
@@ -256,7 +352,7 @@ class Monitor:
                 cursor.close()
                 conn.close()
 
-                print("Wrote {} to db".format(a_track.name))
+                print("Wrote {} to db".format(a_track.title))
                 return True
 
             except BaseException as e:
@@ -280,19 +376,10 @@ class Monitor:
         cursor.close()
         conn.close()
 
-    # def get_current_user_display_name(self):
-    #     return
-
 
 if __name__ == "__main__":
     monitor = Monitor()
-    print("---")
-    # monitor.get_currently_playing()
-    # monitor.get_entries_from_db()
 
     while True:
-        # monitor.write_entry_to_db(monitor.get_currently_playing())
         monitor.get_currently_playing()
-        # if t is not None:
-        #     print(t)
         time.sleep(5)
