@@ -339,7 +339,9 @@ class Monitor:
     def write_track_to_db(self, a_track=None):
         if a_track is not None:
             try:
-                features = self.sp.audio_features(a_track.uri)[0]
+                print("Trying to access features of track {}".format(a_track))
+                print("Track URI: {}".format([a_track.uri]))
+                features = self.sp.audio_features(tracks=[a_track.uri])[0]
 
                 a_track.set_audio_features(
                     a_acousticness=features["acousticness"],
