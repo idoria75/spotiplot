@@ -2,15 +2,39 @@
 USE spotiplot;
 
 -- Create the table
-CREATE TABLE listening_activity (
-    activity_id INT AUTO_INCREMENT PRIMARY KEY,
-    song_title VARCHAR(255),
-    artist VARCHAR(100),
-    album VARCHAR(100),
-    playback_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_name VARCHAR(100) NOT NULL
 );
 
--- Insert sample data
--- INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 1', 'Artist 1', 'Album 1');
--- INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 3', 'Artist 2', 'Album 1');
--- INSERT INTO listening_activity (song_title, artist, album) VALUES ('Song 2', 'Artist 3', 'Album X');
+-- Create the table
+CREATE TABLE tracks (
+    track_id INT AUTO_INCREMENT PRIMARY KEY,
+    track_title VARCHAR(100) NOT NULL,
+    artists VARCHAR(100) NOT NULL,
+    album VARCHAR(100) NOT NULL,
+    duration_ms INT DEFAULT 0,
+    acousticness FLOAT DEFAULT 0,
+    danceability FLOAT DEFAULT 0,
+    energy FLOAT DEFAULT 0,
+    instrumentalness FLOAT DEFAULT 0,
+    musical_key INT DEFAULT 0,
+    liveness FLOAT DEFAULT 0,
+    loudness FLOAT DEFAULT 0,
+    speechiness FLOAT DEFAULT 0,
+    tempo FLOAT DEFAULT 0,
+    time_signature INT DEFAULT 0,
+    valence FLOAT DEFAULT 0,
+    uri VARCHAR(100) NOT NULL
+);
+
+-- Create the table
+CREATE TABLE listening_activity (
+    activity_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    track_id INT,
+    playback_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (track_id) REFERENCES tracks(track_id)
+);
