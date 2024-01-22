@@ -129,7 +129,7 @@ class Monitor:
 
             except mysql.connector.Error as err:
                 if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                    print("Something is wrong with your user name or password")
+                    print("Failed to authenticate with database!")
                 elif err.errno == errorcode.ER_BAD_DB_ERROR:
                     print("Database does not exist")
                 else:
@@ -171,7 +171,7 @@ class Monitor:
             print("Failed to read user credentials. Error: {}".format(e))
             exit()
 
-        print("Authentication succeeded for user: {}".format(self.current_user))
+        print("Spotify authentication succeeded for user: {}".format(self.current_user))
 
     def get_user_db_id(self):
         conn = mysql.connector.connect(**db_config)
@@ -239,10 +239,6 @@ class Monitor:
         for track in tracks:
             print(track)
 
-        # Get before and after unix timestamps
-        # cursors = res_list['cursors']
-        # print(cursors)
-
     def update_currently_playing(self):
         try:
             result = self.sp.current_playback()
@@ -302,7 +298,6 @@ class Monitor:
             print("Successfully wrote id {} to db".format(id))
 
     def get_track_db_id(self, a_track=None):
-        # print("Looking for track: {}".format(a_track))
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
 
@@ -333,14 +328,11 @@ class Monitor:
                 return id
 
             else:
-                print("Could not find track {} in db".format(a_track))
                 return self.write_track_to_db(a_track)
 
     def write_track_to_db(self, a_track=None):
         if a_track is not None:
             try:
-                print("Trying to access features of track {}".format(a_track))
-                print("Track URI: {}".format([a_track.uri]))
                 features = self.sp.audio_features(tracks=[a_track.uri])[0]
 
                 a_track.set_audio_features(
