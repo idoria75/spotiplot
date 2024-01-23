@@ -477,22 +477,17 @@ class Monitor:
 
         t = None
 
-        sql_query = """
-        SELECT AUTO_INCREMENT 
-        FROM information_schema.tables 
-        WHERE table_name = %s 
-        AND table_schema = DATABASE();
-        """
+        sql_query = "SELECT MAX(activity_id) FROM listening_activity;"
 
-        cursor.execute(sql_query, ["listening_activity"])
+        cursor.execute(sql_query)
         result = cursor.fetchone()
 
-        print("Listening activity id result: {}".format(result))
+        # print("Listening activity id result: {}".format(result))
 
         if result:
             last_id = result[0]
             t = self.get_track_from_id(last_id)
-            print("Listening activity id matching track: {}".format(t))
+            # print("Listening activity id matching track: {}".format(t))
         else:
             print("Failed to get last listening id!")
 
