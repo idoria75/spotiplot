@@ -5,6 +5,7 @@ import mysql.connector
 from spotipy.oauth2 import SpotifyOAuth
 from yaml import safe_load
 from mysql.connector import errorcode
+import traceback
 
 PATH_TO_KEYS = "/app/spotiplot.env"
 
@@ -209,6 +210,7 @@ class Monitor:
 
             except BaseException as e:
                 print("Exception: {}".format(e))
+                traceback.print_exc()
                 return False
 
         else:
@@ -219,7 +221,6 @@ class Monitor:
         artists = ""
 
         if a_artists:
-            # print(a_artists)
             for i in range(len(a_artists) - 1):
                 artists = artists + a_artists[i]["name"] + ", "
 
@@ -264,15 +265,20 @@ class Monitor:
                 if self.current_track is None:
                     self.current_track = t
                     self.last_track = t
+                    last_track_db = self.get_last_activity_db()
+
+                    print("Last entry on db: {}".format(last_track_db))
                     print("First song: {}".format(t))
-                    print("Last entry on db: {}".format(self.get_last_activity_db()))
-                    if t != self.get_last_activity_db():
-                        print("Adding first song to db")
+
+                    if t != last_track_db:
+                        print("Adding first song to db: {}".format(t))
                         self.record_activity(self.current_track)
                     return True
+
                 elif t == self.current_track:
                     print("Still playing {}".format(self.current_track))
                     return False
+
                 else:
                     print("Previous song: {}".format(self.last_track))
                     self.last_track = self.current_track
@@ -363,7 +369,7 @@ class Monitor:
 
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
-                # insert_query = "INSERT INTO listening_activity (track_title, artist, album) VALUES (%s, %s, %s)"
+
                 insert_query = """
                     INSERT INTO tracks (
                         track_title,
@@ -407,11 +413,10 @@ class Monitor:
 
                 cursor.execute(insert_query, data_to_insert)
                 conn.commit()
-
-                id = cursor.lastrowid
-
                 cursor.close()
                 conn.close()
+
+                id = cursor.lastrowid
 
                 print("Wrote {} to db".format(a_track.title))
                 return id
@@ -441,7 +446,6 @@ class Monitor:
                 cursor.close()
                 conn.close()
 
-                print("Added track {} to listening activity".format(a_track_db_id))
                 return True
 
             except BaseException as e:
@@ -466,6 +470,7 @@ class Monitor:
         conn.close()
 
     # TODO: Can this be achieved through cursor._last_insert_id?
+    # TODO: Getting value from db schema is not consistent!
     def get_last_activity_db(self):
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
@@ -481,12 +486,13 @@ class Monitor:
 
         cursor.execute(sql_query, ["listening_activity"])
         result = cursor.fetchone()
-        print(result)
+
+        print("Listening activity id result: {}".format(result))
 
         if result:
             last_id = result[0]
-            print("Last listening id: {}".format(last_id))
             t = self.get_track_from_id(last_id)
+            print("Listening activity id matching track: {}".format(t))
         else:
             print("Failed to get last listening id!")
 
@@ -498,6 +504,7 @@ class Monitor:
     def get_track_from_id(self, a_db_id=0):
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
+
         try:
             if a_db_id > 0 and isinstance(a_db_id, int):
                 listening_query = (
@@ -520,7 +527,6 @@ class Monitor:
                         a_duration_ms=track_result[4],
                     )
 
-                    # print("Previous track: {}".format(track))
                     cursor.close()
                     conn.close()
                     return track
@@ -538,7 +544,6 @@ class Monitor:
 
 if __name__ == "__main__":
     monitor = Monitor()
-    monitor.update_currently_playing()
 
     while True:
         monitor.get_currently_playing()
