@@ -25,7 +25,7 @@ class Track:
             raise ValueError("URI cannot be None.")
 
         self.title = a_title
-        self.artists = ""
+        self.artists = a_artists
         self.album = a_album
         self.uri = a_uri
         self.duration_ms = a_duration_ms
@@ -40,13 +40,6 @@ class Track:
         self.tempo = 0.0
         self.time_signature = 0
         self.valence = 0.0
-
-        if a_artists:
-            for i in range(len(a_artists) - 1):
-                self.artists = self.artists + a_artists[i]["name"] + ", "
-            self.artists = self.artists + a_artists[-1]["name"]
-        else:
-            self.artists = "invalid artist info"
 
     def __str__(self):
         return "{} by {} - URI: {}".format(self.title, self.artists, self.uri)
@@ -222,6 +215,21 @@ class Monitor:
             print("Nothing to write to DB!")
             return False
 
+    def parse_artists_list(self, a_artists=[]):
+        artists = ""
+
+        if a_artists:
+            # print(a_artists)
+            for i in range(len(a_artists) - 1):
+                artists = artists + a_artists[i]["name"] + ", "
+
+            artists = artists + a_artists[-1]["name"]
+
+        else:
+            artists = "invalid artist info"
+
+        return artists
+
     def get_recently_played(self):
         res_list = self.sp.current_user_recently_played(limit=10)
         items = res_list["items"]
@@ -246,7 +254,7 @@ class Monitor:
                 item = result["item"]
                 t = Track(
                     a_title=item["name"],
-                    a_artists=item["artists"],
+                    a_artists=self.parse_artists_list(item["artists"]),
                     a_album=item["album"]["name"],
                     a_uri=item["uri"],
                     a_duration_ms=item["duration_ms"],
@@ -257,6 +265,10 @@ class Monitor:
                     self.current_track = t
                     self.last_track = t
                     print("First song: {}".format(t))
+                    print("Last entry on db: {}".format(self.get_last_activity_db()))
+                    if t != self.get_last_activity_db():
+                        print("Adding first song to db")
+                        self.record_activity(self.current_track)
                     return True
                 elif t == self.current_track:
                     print("Still playing {}".format(self.current_track))
@@ -453,9 +465,80 @@ class Monitor:
         cursor.close()
         conn.close()
 
+    # TODO: Can this be achieved through cursor._last_insert_id?
+    def get_last_activity_db(self):
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        t = None
+
+        sql_query = """
+        SELECT AUTO_INCREMENT 
+        FROM information_schema.tables 
+        WHERE table_name = %s 
+        AND table_schema = DATABASE();
+        """
+
+        cursor.execute(sql_query, ["listening_activity"])
+        result = cursor.fetchone()
+        print(result)
+
+        if result:
+            last_id = result[0]
+            print("Last listening id: {}".format(last_id))
+            t = self.get_track_from_id(last_id)
+        else:
+            print("Failed to get last listening id!")
+
+        cursor.reset()
+        cursor.close()
+        conn.close()
+        return t
+
+    def get_track_from_id(self, a_db_id=0):
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        try:
+            if a_db_id > 0 and isinstance(a_db_id, int):
+                listening_query = (
+                    "SELECT * FROM listening_activity WHERE activity_id = %s"
+                )
+                cursor.execute(listening_query, [a_db_id])
+                listening_result = cursor.fetchall()
+                track_id = listening_result[0][2]
+
+                if track_id > 0:
+                    track_query = "SELECT * FROM tracks WHERE track_id = %s"
+                    cursor.execute(track_query, [track_id])
+                    track_result = cursor.fetchall()[0]
+
+                    track = Track(
+                        a_title=track_result[1],
+                        a_artists=track_result[2],
+                        a_album=track_result[3],
+                        a_uri=track_result[-1],
+                        a_duration_ms=track_result[4],
+                    )
+
+                    # print("Previous track: {}".format(track))
+                    cursor.close()
+                    conn.close()
+                    return track
+
+            cursor.close()
+            conn.close()
+            return None
+
+        except BaseException as e:
+            print("Exception: {}".format(e))
+            cursor.close()
+            conn.close()
+            return None
+
 
 if __name__ == "__main__":
     monitor = Monitor()
+    monitor.update_currently_playing()
 
     while True:
         monitor.get_currently_playing()
