@@ -5,6 +5,7 @@ import mysql.connector
 from spotipy.oauth2 import SpotifyOAuth
 from yaml import safe_load
 from mysql.connector import errorcode
+import traceback
 
 PATH_TO_KEYS = "/app/spotiplot.env"
 
@@ -25,7 +26,7 @@ class Track:
             raise ValueError("URI cannot be None.")
 
         self.title = a_title
-        self.artists = ""
+        self.artists = a_artists
         self.album = a_album
         self.uri = a_uri
         self.duration_ms = a_duration_ms
@@ -41,15 +42,8 @@ class Track:
         self.time_signature = 0
         self.valence = 0.0
 
-        if a_artists:
-            for i in range(len(a_artists) - 1):
-                self.artists = self.artists + a_artists[i]["name"] + ", "
-            self.artists = self.artists + a_artists[-1]["name"]
-        else:
-            self.artists = "invalid artist info"
-
     def __str__(self):
-        return "{} by {} - URI: {}".format(self.title, self.artists, self.uri)
+        return "{} by {}".format(self.title, self.artists)
 
     def __eq__(self, a_other):
         if a_other is not None:
@@ -208,7 +202,7 @@ class Monitor:
                 conn.close()
 
                 print(
-                    "Added user {} to db with id {}".format(
+                    "Saved user {} to db with id {}".format(
                         self.current_user, self.get_user_db_id()
                     )
                 )
@@ -216,11 +210,26 @@ class Monitor:
 
             except BaseException as e:
                 print("Exception: {}".format(e))
+                traceback.print_exc()
                 return False
 
         else:
             print("Nothing to write to DB!")
             return False
+
+    def parse_artists_list(self, a_artists=[]):
+        artists = ""
+
+        if a_artists:
+            for i in range(len(a_artists) - 1):
+                artists = artists + a_artists[i]["name"] + ", "
+
+            artists = artists + a_artists[-1]["name"]
+
+        else:
+            artists = "invalid artist info"
+
+        return artists
 
     def get_recently_played(self):
         res_list = self.sp.current_user_recently_played(limit=10)
@@ -246,7 +255,7 @@ class Monitor:
                 item = result["item"]
                 t = Track(
                     a_title=item["name"],
-                    a_artists=item["artists"],
+                    a_artists=self.parse_artists_list(item["artists"]),
                     a_album=item["album"]["name"],
                     a_uri=item["uri"],
                     a_duration_ms=item["duration_ms"],
@@ -256,11 +265,20 @@ class Monitor:
                 if self.current_track is None:
                     self.current_track = t
                     self.last_track = t
+                    last_track_db = self.get_last_activity_db()
+
+                    print("Last entry on db: {}".format(last_track_db))
                     print("First song: {}".format(t))
+
+                    if t != last_track_db:
+                        print("Adding first song to db: {}".format(t))
+                        self.record_activity(self.current_track)
                     return True
+
                 elif t == self.current_track:
                     print("Still playing {}".format(self.current_track))
                     return False
+
                 else:
                     print("Previous song: {}".format(self.last_track))
                     self.last_track = self.current_track
@@ -268,6 +286,7 @@ class Monitor:
                     print("Updated current song to: {}".format(self.current_track))
                     self.record_activity(self.current_track)
                     return True
+
             else:
                 return False
 
@@ -279,8 +298,10 @@ class Monitor:
     # TODO: Improve
     def get_currently_playing(self):
         res = self.update_currently_playing()
+
         if res:
             return self.current_track
+
         else:
             return None
 
@@ -295,7 +316,7 @@ class Monitor:
             res = False
 
         if res:
-            print("Successfully wrote id {} to db".format(id))
+            print("Saved activity with id {}".format(id))
 
     def get_track_db_id(self, a_track=None):
         conn = mysql.connector.connect(**db_config)
@@ -316,6 +337,7 @@ class Monitor:
                             a_track.title
                         )
                     )
+
                 for track in result:
                     if id == 0:
                         id = track[0]
@@ -351,7 +373,7 @@ class Monitor:
 
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
-                # insert_query = "INSERT INTO listening_activity (track_title, artist, album) VALUES (%s, %s, %s)"
+
                 insert_query = """
                     INSERT INTO tracks (
                         track_title,
@@ -395,13 +417,12 @@ class Monitor:
 
                 cursor.execute(insert_query, data_to_insert)
                 conn.commit()
-
-                id = cursor.lastrowid
-
                 cursor.close()
                 conn.close()
 
-                print("Wrote {} to db".format(a_track.title))
+                id = cursor.lastrowid
+
+                print("Saved track {} to tracks".format(a_track.title))
                 return id
 
             except BaseException as e:
@@ -418,9 +439,11 @@ class Monitor:
             try:
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
+
                 insert_query = (
                     "INSERT INTO listening_activity (user_id, track_id) VALUES (%s, %s)"
                 )
+
                 data_to_insert = [self.get_user_db_id(), a_track_db_id]
 
                 cursor.execute(insert_query, data_to_insert)
@@ -429,7 +452,6 @@ class Monitor:
                 cursor.close()
                 conn.close()
 
-                print("Added track {} to listening activity".format(a_track_db_id))
                 return True
 
             except BaseException as e:
@@ -453,10 +475,77 @@ class Monitor:
         cursor.close()
         conn.close()
 
+    # TODO: Can this be achieved through cursor._last_insert_id?
+    # TODO: Getting value from db schema is not consistent!
+    def get_last_activity_db(self):
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        t = None
+
+        sql_query = "SELECT MAX(activity_id) FROM listening_activity;"
+
+        cursor.execute(sql_query)
+        result = cursor.fetchone()
+
+        # print("Listening activity id result: {}".format(result))
+
+        if result:
+            last_id = result[0]
+            t = self.get_track_from_id(last_id)
+            # print("Listening activity id matching track: {}".format(t))
+        else:
+            print("Failed to get last listening id!")
+
+        cursor.reset()
+        cursor.close()
+        conn.close()
+        return t
+
+    def get_track_from_id(self, a_db_id=0):
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        try:
+            if a_db_id > 0 and isinstance(a_db_id, int):
+                listening_query = (
+                    "SELECT * FROM listening_activity WHERE activity_id = %s"
+                )
+                cursor.execute(listening_query, [a_db_id])
+                listening_result = cursor.fetchall()
+                track_id = listening_result[0][2]
+
+                if track_id > 0:
+                    track_query = "SELECT * FROM tracks WHERE track_id = %s"
+                    cursor.execute(track_query, [track_id])
+                    track_result = cursor.fetchall()[0]
+
+                    track = Track(
+                        a_title=track_result[1],
+                        a_artists=track_result[2],
+                        a_album=track_result[3],
+                        a_uri=track_result[-1],
+                        a_duration_ms=track_result[4],
+                    )
+
+                    cursor.close()
+                    conn.close()
+                    return track
+
+            cursor.close()
+            conn.close()
+            return None
+
+        except BaseException as e:
+            print("Exception: {}".format(e))
+            cursor.close()
+            conn.close()
+            return None
+
 
 if __name__ == "__main__":
     monitor = Monitor()
 
     while True:
         monitor.get_currently_playing()
-        time.sleep(15)
+        time.sleep(5)
