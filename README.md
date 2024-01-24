@@ -16,7 +16,7 @@ The app is launched through docker compose. This enables the Python service to s
 
 ## Handling MySQL passwords
 
-For the moment, an environment file is necessary. Copy the lines below into a new `.env` file:
+In the `.env` file, update `MYSQL_PASSWORD` and `MYSQL_ROOT_PASSWORD` passwords as you prefer.
 
 ```yaml
 MYSQL_PASSWORD: sample_password
@@ -25,7 +25,7 @@ MYSQL_ROOT_PASSWORD: sample_root_password
 
 ## Handling Spotify credentials
 
-Copy the lines below into a new `spotiplot.env` file inside the `app` folder:
+Populate the fields on `app/spotiplot.env` with the information available on your [Spotify dashboard](https://developer.spotify.com/dashboard).
 
 ```yaml
 credentials:
@@ -34,8 +34,6 @@ credentials:
     redirect_uri: '<redirect_uri>'
 
 ```
-
-Populate the fields on this file with the information available on your [Spotify dashboard](https://developer.spotify.com/dashboard).
 
 ## Building the Docker Image
 
