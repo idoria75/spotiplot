@@ -161,4 +161,3 @@ cython_debug/
 
 # Ignore database files
 mysql/db/*
-*.env
