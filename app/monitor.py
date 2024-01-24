@@ -8,6 +8,7 @@ from mysql.connector import errorcode
 import traceback
 
 PATH_TO_KEYS = "/app/spotiplot.env"
+DEBUG_STATE = False
 
 db_pass = os.getenv("MYSQL_PASSWORD")
 
@@ -131,6 +132,7 @@ class Monitor:
 
             except BaseException as e:
                 print("Exception: {}".format(e))
+                traceback.print_exc()
 
             if not (connected):
                 time.sleep(5)
@@ -248,11 +250,53 @@ class Monitor:
         for track in tracks:
             print(track)
 
+    # TODO: Implement queue monitor
+    def get_queue(self):
+        sp_queue = self.sp.queue()["queue"]
+        queue = []
+
+        print("Number of items in queue: {}".format(len(sp_queue)))
+
+        for item in queue:
+            t = Track(
+                a_title=item["name"],
+                a_artists=self.parse_artists_list(item["artists"]),
+                a_album=item["album"]["name"],
+                a_uri=item["uri"],
+                a_duration_ms=item["duration_ms"],
+            )
+
+            queue.append(t)
+
+        for track in queue:
+            print(track)
+
     def update_currently_playing(self):
         try:
             result = self.sp.current_playback()
+
             if result is not None:
+                shuffle_state = "normal"
+
+                if result["smart_shuffle"]:
+                    shuffle_state = "smart"
+
+                elif result["shuffle_state"]:
+                    shuffle_state = "shuffle"
+
+                if DEBUG_STATE:
+                    print("Current playback state:")
+                    print("Shuffle state: {}".format(result["shuffle_state"]))
+                    print("Smart shuffle: {}".format(result["smart_shuffle"]))
+                    print("Repeat state: {}".format(result["repeat_state"]))
+                    print("Is playing: {}".format(result["is_playing"]))
+                    print("Type: {}".format(result["context"]["type"]))
+                    print("Playlist URI: {}".format(result["context"]["uri"]))
+
+                    print("Shuffle state: {}".format(shuffle_state))
+
                 item = result["item"]
+
                 t = Track(
                     a_title=item["name"],
                     a_artists=self.parse_artists_list(item["artists"]),
@@ -260,7 +304,6 @@ class Monitor:
                     a_uri=item["uri"],
                     a_duration_ms=item["duration_ms"],
                 )
-                print("---")
 
                 if self.current_track is None:
                     self.current_track = t
@@ -272,7 +315,7 @@ class Monitor:
 
                     if t != last_track_db:
                         print("Adding first song to db: {}".format(t))
-                        self.record_activity(self.current_track)
+                        self.record_activity(self.current_track, shuffle_state)
                     return True
 
                 elif t == self.current_track:
@@ -284,10 +327,11 @@ class Monitor:
                     self.last_track = self.current_track
                     self.current_track = t
                     print("Updated current song to: {}".format(self.current_track))
-                    self.record_activity(self.current_track)
+                    self.record_activity(self.current_track, shuffle_state)
                     return True
 
             else:
+                print("Not playing any track!")
                 return False
 
         except BaseException as e:
@@ -305,11 +349,11 @@ class Monitor:
         else:
             return None
 
-    def record_activity(self, a_track):
+    def record_activity(self, a_track, a_shuffle_state):
         id = self.get_track_db_id(a_track)
 
-        if id > 0:
-            res = self.write_activity_to_db(id)
+        if id > 0 and id is not None:
+            res = self.write_activity_to_db(id, a_shuffle_state)
 
         # TODO: Error handling
         else:
@@ -427,6 +471,7 @@ class Monitor:
 
             except BaseException as e:
                 print("Exception: {}".format(e))
+                traceback.print_exc()
                 return 0
 
         else:
@@ -434,17 +479,15 @@ class Monitor:
             return 0
 
     # TODO: Improve cursor and conn close reliability
-    def write_activity_to_db(self, a_track_db_id):
+    def write_activity_to_db(self, a_track_db_id, a_shuffle_state):
         if a_track_db_id > 0:
             try:
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
 
-                insert_query = (
-                    "INSERT INTO listening_activity (user_id, track_id) VALUES (%s, %s)"
-                )
+                insert_query = "INSERT INTO listening_activity (user_id, track_id, shuffle_state) VALUES (%s, %s, %s)"
 
-                data_to_insert = [self.get_user_db_id(), a_track_db_id]
+                data_to_insert = [self.get_user_db_id(), a_track_db_id, a_shuffle_state]
 
                 cursor.execute(insert_query, data_to_insert)
                 conn.commit()
@@ -456,6 +499,7 @@ class Monitor:
 
             except BaseException as e:
                 print("Exception: {}".format(e))
+                traceback.print_exc()
                 return False
 
         else:
@@ -486,16 +530,15 @@ class Monitor:
         sql_query = "SELECT MAX(activity_id) FROM listening_activity;"
 
         cursor.execute(sql_query)
-        result = cursor.fetchone()
-
-        # print("Listening activity id result: {}".format(result))
+        result = cursor.fetchone()[0]
 
         if result:
-            last_id = result[0]
+            print("Result from max query: {}".format(result))
+            last_id = result
             t = self.get_track_from_id(last_id)
-            # print("Listening activity id matching track: {}".format(t))
-        else:
-            print("Failed to get last listening id!")
+
+        # else:
+        #     print("Failed to get last listening id!")
 
         cursor.reset()
         cursor.close()
@@ -507,37 +550,42 @@ class Monitor:
         cursor = conn.cursor()
 
         try:
-            if a_db_id > 0 and isinstance(a_db_id, int):
-                listening_query = (
-                    "SELECT * FROM listening_activity WHERE activity_id = %s"
-                )
-                cursor.execute(listening_query, [a_db_id])
-                listening_result = cursor.fetchall()
-                track_id = listening_result[0][2]
-
-                if track_id > 0:
-                    track_query = "SELECT * FROM tracks WHERE track_id = %s"
-                    cursor.execute(track_query, [track_id])
-                    track_result = cursor.fetchall()[0]
-
-                    track = Track(
-                        a_title=track_result[1],
-                        a_artists=track_result[2],
-                        a_album=track_result[3],
-                        a_uri=track_result[-1],
-                        a_duration_ms=track_result[4],
+            if isinstance(a_db_id, int):
+                if a_db_id > 0:
+                    listening_query = (
+                        "SELECT * FROM listening_activity WHERE activity_id = %s"
                     )
+                    cursor.execute(listening_query, [a_db_id])
+                    listening_result = cursor.fetchall()
+                    track_id = listening_result[0][2]
 
-                    cursor.close()
-                    conn.close()
-                    return track
+                    if track_id > 0:
+                        track_query = "SELECT * FROM tracks WHERE track_id = %s"
+                        cursor.execute(track_query, [track_id])
+                        track_result = cursor.fetchall()[0]
 
-            cursor.close()
-            conn.close()
-            return None
+                        track = Track(
+                            a_title=track_result[1],
+                            a_artists=track_result[2],
+                            a_album=track_result[3],
+                            a_uri=track_result[-1],
+                            a_duration_ms=track_result[4],
+                        )
+
+                        cursor.close()
+                        conn.close()
+                        return track
+
+                cursor.close()
+                conn.close()
+                return None
+
+            else:
+                print("Invalid id!")
 
         except BaseException as e:
             print("Exception: {}".format(e))
+            traceback.print_exc()
             cursor.close()
             conn.close()
             return None
@@ -547,5 +595,6 @@ if __name__ == "__main__":
     monitor = Monitor()
 
     while True:
+        print("---")
         monitor.get_currently_playing()
         time.sleep(5)
