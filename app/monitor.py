@@ -43,7 +43,7 @@ class Track:
         self.valence = 0.0
 
     def __str__(self):
-        return "{} by {} - URI: {}".format(self.title, self.artists, self.uri)
+        return "{} by {}".format(self.title, self.artists)
 
     def __eq__(self, a_other):
         if a_other is not None:
@@ -202,7 +202,7 @@ class Monitor:
                 conn.close()
 
                 print(
-                    "Added user {} to db with id {}".format(
+                    "Saved user {} to db with id {}".format(
                         self.current_user, self.get_user_db_id()
                     )
                 )
@@ -286,6 +286,7 @@ class Monitor:
                     print("Updated current song to: {}".format(self.current_track))
                     self.record_activity(self.current_track)
                     return True
+
             else:
                 return False
 
@@ -297,8 +298,10 @@ class Monitor:
     # TODO: Improve
     def get_currently_playing(self):
         res = self.update_currently_playing()
+
         if res:
             return self.current_track
+
         else:
             return None
 
@@ -313,7 +316,7 @@ class Monitor:
             res = False
 
         if res:
-            print("Successfully wrote id {} to db".format(id))
+            print("Saved activity with id {}".format(id))
 
     def get_track_db_id(self, a_track=None):
         conn = mysql.connector.connect(**db_config)
@@ -334,6 +337,7 @@ class Monitor:
                             a_track.title
                         )
                     )
+
                 for track in result:
                     if id == 0:
                         id = track[0]
@@ -418,7 +422,7 @@ class Monitor:
 
                 id = cursor.lastrowid
 
-                print("Wrote {} to db".format(a_track.title))
+                print("Saved track {} to tracks".format(a_track.title))
                 return id
 
             except BaseException as e:
@@ -435,9 +439,11 @@ class Monitor:
             try:
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
+
                 insert_query = (
                     "INSERT INTO listening_activity (user_id, track_id) VALUES (%s, %s)"
                 )
+
                 data_to_insert = [self.get_user_db_id(), a_track_db_id]
 
                 cursor.execute(insert_query, data_to_insert)
@@ -542,4 +548,4 @@ if __name__ == "__main__":
 
     while True:
         monitor.get_currently_playing()
-        time.sleep(15)
+        time.sleep(5)
