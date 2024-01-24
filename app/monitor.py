@@ -248,9 +248,39 @@ class Monitor:
         for track in tracks:
             print(track)
 
+    # TODO: Implement queue monitor
+    def get_queue(self):
+        sp_queue = self.sp.queue()["queue"]
+        queue = []
+
+        print("Number of items in queue: {}".format(len(sp_queue)))
+
+        for item in queue:
+            t = Track(
+                a_title=item["name"],
+                a_artists=self.parse_artists_list(item["artists"]),
+                a_album=item["album"]["name"],
+                a_uri=item["uri"],
+                a_duration_ms=item["duration_ms"],
+            )
+
+            queue.append(t)
+
+        for track in queue:
+            print(track)
+
     def update_currently_playing(self):
         try:
             result = self.sp.current_playback()
+            print("---")
+            print("Current playback state:")
+            print("Shuffle state: {}".format(result["shuffle_state"]))
+            print("Smart shuffle: {}".format(result["smart_shuffle"]))
+            print("Repeat state: {}".format(result["repeat_state"]))
+            print("Is playing: {}".format(result["is_playing"]))
+            print("Type: {}".format(result["context"]["type"]))
+            print("Playlist URI: {}".format(result["context"]["uri"]))
+
             if result is not None:
                 item = result["item"]
                 t = Track(
@@ -488,12 +518,11 @@ class Monitor:
         cursor.execute(sql_query)
         result = cursor.fetchone()
 
-        # print("Listening activity id result: {}".format(result))
-
         if result:
             last_id = result[0]
             t = self.get_track_from_id(last_id)
             # print("Listening activity id matching track: {}".format(t))
+
         else:
             print("Failed to get last listening id!")
 
