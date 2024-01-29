@@ -360,7 +360,7 @@ class Monitor:
             res = False
 
         if res:
-            print("Saved activity with id {}".format(id))
+            print("Logged activity with track id {}".format(id))
 
     def get_track_db_id(self, a_track=None):
         conn = mysql.connector.connect(**db_config)
@@ -597,4 +597,4 @@ if __name__ == "__main__":
     while True:
         print("---")
         monitor.get_currently_playing()
-        time.sleep(5)
+        time.sleep(10)
