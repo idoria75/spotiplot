@@ -15,16 +15,6 @@ services:
       MYSQL_DATABASE: spotiplot
       MYSQL_USER: spotiplot
 
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 9090:8080
-    networks:
-      - spotiplot-network
-    environment:
-      ADMINER_DEFAULT_SERVER: mysql
-
   monitor:
     image: spotiplot_monitor
     restart: always
@@ -37,6 +27,18 @@ services:
     environment:
       MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
     command: ["python", "-u", "monitor.py"]
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 9090:8080
+    networks:
+      - spotiplot-network
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+
+  # insert metabase service here (see README.md)
 
 networks:
   spotiplot-network:
