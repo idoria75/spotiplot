@@ -2,15 +2,24 @@
 
 A project for data analysis of Spotify usage, completely built with Docker.
 
+## Introduction
+
+The project integrates:
+
+- Python, to make requests to the [Spotify API](https://developer.spotify.com/documentation/web-api) through [Spotipy](https://spotipy.readthedocs.io/)
+- MySQL, to store the data collected.
+- Metabase, to visualize the data and create dashboards.
+- Adminer, a tool for database debugging.
+
+Here is an example of a possible dashboard:
+![image info](./docs/dashboard_example.png)
+
+
 ## Requirements
 
-A machine capable of running Docker and Docker compose.
+A machine running Docker and Docker compose, which can run constantly. This can be either an online instance or a local machine (e.g., Raspberry Pi)
 
-Note: Metabase requires the architecture `amd64`. It is possible to run the back-end services (Spotify monitor, MySQL database) in a `armv8` unit (e.g., Raspberry Pi 3 or higher), and then run Metabase in a separate `amd64` machine.
-
-## Docker environment
-
-The app is launched through docker compose. This enables the Python service to start along with the database to store the listening data.
+**Note:** Metabase requires the architecture `amd64`. It is possible to run the back-end services (Spotify monitor, MySQL database) in a `armv8` unit (e.g., Raspberry Pi 3), and then run Metabase in a separate `amd64` machine.
 
 ## Handling MySQL passwords
 
@@ -103,9 +112,6 @@ Once in Metabase's main panel, it is possible to perform SQL queries and plot th
 Metabase provides a rich [getting started](https://www.metabase.com/learn/getting-started/introduction) page with instructions on how to work with your data.
 
 In short, first create a dashboard, and then create multiple SQL queries based on the data that you want to analyse. When saving the query, select your dashboard to have it linked automatically. Finally, proceed to the dashboard to customize it's layout as preferred.
-
-Here is an example of a possible dashboard:
-![image info](./docs/dashboard_example.png)
 
 Some of the queries used for this dashboard can be found in the metabase [folder](./metabase)
 
