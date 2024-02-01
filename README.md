@@ -14,7 +14,6 @@ The project integrates:
 Here is an example of a possible dashboard:
 ![image info](./docs/dashboard_example.png)
 
-
 ## Requirements
 
 A machine running Docker and Docker compose, which can run constantly. This can be either an online instance or a local machine (e.g., Raspberry Pi)
@@ -23,7 +22,7 @@ A machine running Docker and Docker compose, which can run constantly. This can 
 
 ## Handling MySQL passwords
 
-In the `.env` file, update `MYSQL_PASSWORD` and `MYSQL_ROOT_PASSWORD` passwords as you prefer.
+Before running this code, create a file named`.env` , and update `MYSQL_PASSWORD` and `MYSQL_ROOT_PASSWORD` passwords as you prefer. A default file named `default.env` is included in the project, and can be used as a reference:
 
 ```yaml
 MYSQL_PASSWORD: sample_password
@@ -32,7 +31,7 @@ MYSQL_ROOT_PASSWORD: sample_root_password
 
 ## Handling Spotify credentials
 
-Populate the fields on `app/spotiplot.env` with the information available on your [Spotify dashboard](https://developer.spotify.com/dashboard).
+It will also be necessary to create a file to store the Spotify credentials: `app/spotiplot.env`. The file should be populated with the information available on your [Spotify dashboard](https://developer.spotify.com/dashboard). A default file named `default_spotiplot.env` is included in the project (inside the `app` folder), and can be used as a reference:
 
 ```yaml
 credentials:
