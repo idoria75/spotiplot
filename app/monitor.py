@@ -5,10 +5,12 @@ import mysql.connector
 from spotipy.oauth2 import SpotifyOAuth
 from yaml import safe_load
 from mysql.connector import errorcode
+from datetime import datetime, timedelta
 import traceback
 
 PATH_TO_KEYS = "/app/spotiplot.env"
 DEBUG_STATE = False
+LOOP_SLEEP = 3
 
 db_pass = os.getenv("MYSQL_PASSWORD")
 
@@ -106,6 +108,9 @@ class Monitor:
         self.last_played = []
         self.current_track = None
         self.last_track = None
+        self.current_track_playtime = timedelta()
+        self.last_tick = None
+        self.playback_stopped = True
 
         self.user_db_id = self.get_user_db_id()
         if self.user_db_id == 0:
@@ -295,6 +300,8 @@ class Monitor:
 
                     print("Shuffle state: {}".format(shuffle_state))
 
+                is_playing = result["is_playing"]
+
                 item = result["item"]
 
                 t = Track(
@@ -312,25 +319,69 @@ class Monitor:
 
                     print("Last entry on db: {}".format(last_track_db))
                     print("First song: {}".format(t))
+                    self.reset_current_playtime()
 
                     if t != last_track_db:
-                        print("Adding first song to db: {}".format(t))
+                        # print("Adding first song to db: {}".format(t))
                         self.record_activity(self.current_track, shuffle_state)
+
+                    self.playback_stopped = False
                     return True
 
                 elif t == self.current_track:
+                    self.tick_playtime(
+                        a_playing_state=is_playing,
+                        a_playback_stopped=self.playback_stopped,
+                    )
+
                     print("Still playing {}".format(self.current_track))
+                    print(
+                        "Playing for {} seconds".format(
+                            int(self.get_current_playtime())
+                        )
+                    )
+                    print("Is playing: {}".format(is_playing))
+
+                    track_duration_seconds = self.current_track.duration_ms / 1000
+                    print(
+                        "Percentage: {:.2f}%".format(
+                            100
+                            * int(self.get_current_playtime())
+                            / track_duration_seconds
+                        )
+                    )
+
+                    self.playback_stopped = False
                     return False
 
                 else:
-                    print("Previous song: {}".format(self.last_track))
+                    last_track_playtime = int(self.get_current_playtime())
+                    track_duration_seconds = self.current_track.duration_ms / 1000
+                    self.reset_current_playtime()
+
+                    print("Previous song: {}".format(self.current_track))
+                    print("Played for: {} seconds".format(last_track_playtime))
+                    print(
+                        "Total track duration: {} seconds".format(
+                            track_duration_seconds
+                        )
+                    )
+                    print(
+                        "Percentage: {:.2f}%".format(
+                            100 * last_track_playtime / track_duration_seconds
+                        )
+                    )
+
                     self.last_track = self.current_track
                     self.current_track = t
                     print("Updated current song to: {}".format(self.current_track))
                     self.record_activity(self.current_track, shuffle_state)
+
+                    self.playback_stopped = False
                     return True
 
             else:
+                self.playback_stopped = True
                 print("Not playing any track!")
                 return False
 
@@ -590,11 +641,37 @@ class Monitor:
             conn.close()
             return None
 
+    # This method approximates the increase in playtime between iterations
+    # If the player was not playing, it should prevent the calculation between ticks
+    # This should be improved!
+    def tick_playtime(self, a_playing_state=False, a_playback_stopped=False):
+        if a_playing_state:
+            if a_playback_stopped:
+                self.current_track_playtime += timedelta(seconds=LOOP_SLEEP)
+            else:
+                self.current_track_playtime += datetime.now() - self.last_tick
+        self.last_tick = datetime.now()
+
+    def get_current_playtime(self):
+        return self.current_track_playtime.total_seconds()
+
+    def reset_current_playtime(self):
+        self.current_track_playtime = timedelta()
+        self.last_tick = datetime.now()
+
 
 if __name__ == "__main__":
     monitor = Monitor()
 
     while True:
-        print("---")
-        monitor.get_currently_playing()
-        time.sleep(10)
+        try:
+            print("---")
+            monitor.get_currently_playing()
+            time.sleep(LOOP_SLEEP)
+        except KeyboardInterrupt:
+            print("\nStopping spotiplot monitor on keyboard interrupt!")
+            exit()
+        except BaseException as e:
+            print("While loop failed with exception: {}".format(e))
+            traceback.print_exc()
+            exit()
