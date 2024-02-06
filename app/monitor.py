@@ -321,9 +321,8 @@ class Monitor:
                     print("First song: {}".format(t))
                     self.reset_current_playtime()
 
-                    if t != last_track_db:
-                        # print("Adding first song to db: {}".format(t))
-                        self.record_activity(self.current_track, shuffle_state)
+                    # if t != last_track_db:
+                    #     self.record_activity(self.current_track, shuffle_state)
 
                     self.playback_stopped = False
                     return True
@@ -342,12 +341,12 @@ class Monitor:
                     )
                     print("Is playing: {}".format(is_playing))
 
-                    track_duration_seconds = self.current_track.duration_ms / 1000
+                    # track_duration_seconds = self.current_track.duration_ms / 1000
                     print(
                         "Percentage: {:.2f}%".format(
                             100
-                            * int(self.get_current_playtime())
-                            / track_duration_seconds
+                            * int(self.get_current_playtime() * 1000)
+                            / self.current_track.duration_ms
                         )
                     )
 
@@ -355,27 +354,38 @@ class Monitor:
                     return False
 
                 else:
-                    last_track_playtime = int(self.get_current_playtime())
-                    track_duration_seconds = self.current_track.duration_ms / 1000
+                    current_track_playtime_ms = int(self.get_current_playtime() * 1000)
+
                     self.reset_current_playtime()
 
                     print("Previous song: {}".format(self.current_track))
-                    print("Played for: {} seconds".format(last_track_playtime))
+                    print("Played for: {} ms".format(current_track_playtime_ms))
                     print(
-                        "Total track duration: {} seconds".format(
-                            track_duration_seconds
+                        "Total track duration: {} ms".format(
+                            self.current_track.duration_ms
                         )
                     )
                     print(
                         "Percentage: {:.2f}%".format(
-                            100 * last_track_playtime / track_duration_seconds
+                            100
+                            * current_track_playtime_ms
+                            / self.current_track.duration_ms
                         )
+                    )
+
+                    print(
+                        "Recording activity: {} played for {} ms".format(
+                            self.current_track.title, current_track_playtime_ms
+                        )
+                    )
+
+                    self.record_activity(
+                        self.current_track, shuffle_state, current_track_playtime_ms
                     )
 
                     self.last_track = self.current_track
                     self.current_track = t
                     print("Updated current song to: {}".format(self.current_track))
-                    self.record_activity(self.current_track, shuffle_state)
 
                     self.playback_stopped = False
                     return True
@@ -400,11 +410,11 @@ class Monitor:
         else:
             return None
 
-    def record_activity(self, a_track, a_shuffle_state):
+    def record_activity(self, a_track, a_shuffle_state="normal", a_duration_ms=0):
         id = self.get_track_db_id(a_track)
 
         if id > 0 and id is not None:
-            res = self.write_activity_to_db(id, a_shuffle_state)
+            res = self.write_activity_to_db(id, a_shuffle_state, a_duration_ms)
 
         # TODO: Error handling
         else:
@@ -530,15 +540,22 @@ class Monitor:
             return 0
 
     # TODO: Improve cursor and conn close reliability
-    def write_activity_to_db(self, a_track_db_id, a_shuffle_state):
+    def write_activity_to_db(
+        self, a_track_db_id, a_shuffle_state="normal", a_duration_ms=0
+    ):
         if a_track_db_id > 0:
             try:
                 conn = mysql.connector.connect(**db_config)
                 cursor = conn.cursor()
 
-                insert_query = "INSERT INTO listening_activity (user_id, track_id, shuffle_state) VALUES (%s, %s, %s)"
+                insert_query = "INSERT INTO listening_activity (user_id, track_id, shuffle_state, playback_duration_ms) VALUES (%s, %s, %s, %s)"
 
-                data_to_insert = [self.get_user_db_id(), a_track_db_id, a_shuffle_state]
+                data_to_insert = [
+                    self.get_user_db_id(),
+                    a_track_db_id,
+                    a_shuffle_state,
+                    a_duration_ms,
+                ]
 
                 cursor.execute(insert_query, data_to_insert)
                 conn.commit()
@@ -659,9 +676,73 @@ class Monitor:
         self.current_track_playtime = timedelta()
         self.last_tick = datetime.now()
 
+    def fix_playback_times(self):
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM listening_activity")
+        rows = cursor.fetchall()
+
+        try:
+            if rows:
+                for i in range(len(rows) - 1):
+                    track_playback_time = 0
+
+                    # for i in range(10):
+                    interval = rows[i + 1][4] - rows[i][4]
+                    interval_ms = interval.total_seconds() * 1000
+                    print("---")
+                    # print(rows[i])
+                    # print("Activity {}: {}".format(rows[i][0], interval))
+                    t = self.get_track_from_id(rows[i][2])
+                    print("Updating activity {}".format(t))
+
+                    # td = timedelta(milliseconds=t.duration_ms)
+
+                    percentage = 100 * interval_ms / (t.duration_ms)
+
+                    # print(
+                    #     "Interval: {}, Duration: {} ---> Percentage: {:.2f}%".format(
+                    #         interval_ms, t.duration_ms, percentage
+                    #     )
+                    # )
+
+                    # print("Track duration: {}".format(t.duration_ms))
+
+                    # TODO: If > 100%, maybe played more than once?
+                    # TODO: How to proceed if track was skipped?
+
+                    if percentage > 90:
+                        # print("Played full track!")
+                        track_playback_time = int(t.duration_ms)
+
+                    else:
+                        track_playback_time = int(interval_ms)
+
+                    # print("final playback time: {}".format(track_playback_time))
+
+                    update_query = """UPDATE listening_activity
+                                SET playback_duration_ms = %s
+                                WHERE activity_id = %s;"""
+
+                    cursor.execute(
+                        update_query,
+                        (track_playback_time, rows[i][0]),
+                    )
+
+                    conn.commit()
+
+        except BaseException as e:
+
+            print("*** Error while updating playback_duration_ms", e)
+
+        cursor.close()
+        conn.close()
+
 
 if __name__ == "__main__":
     monitor = Monitor()
+    # monitor.fix_playback_times()
 
     while True:
         try:
