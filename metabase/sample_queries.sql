@@ -24,7 +24,12 @@ SELECT MAX(track_id) FROM tracks;
 -- Number of songs played
 SELECT MAX(activity_id) FROM listening_activity;
 
--- Approximate playing time (Warning: does not consider if user skipped tracks):
-SELECT SUM(t.duration_ms) / 60000 AS total_play_time_minutes
-FROM listening_activity la
-JOIN tracks t ON la.track_id = t.track_id;
+-- Approximate playing time:
+SELECT 
+    CONCAT(
+        FLOOR(SUM(playback_duration_ms) / 3600000), ' hours and ', 
+        FLOOR((SUM(playback_duration_ms) % 3600000) / 60000), ' minutes'
+    ) AS total_playback_time_formatted
+FROM 
+    listening_activity;
+
