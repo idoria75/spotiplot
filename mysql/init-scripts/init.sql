@@ -35,6 +35,7 @@ CREATE TABLE listening_activity (
     track_id INT,
     shuffle_state ENUM('normal', 'queue', 'shuffle', 'smart') NOT NULL,
     playback_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    playback_duration_ms INT NOT NULL DEFAULT 0,
 
     FOREIGN KEY (user_id) REFERENCES users(user_id),
     FOREIGN KEY (track_id) REFERENCES tracks(track_id)
