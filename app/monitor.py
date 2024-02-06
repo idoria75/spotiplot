@@ -21,6 +21,7 @@ db_config = {
     "database": "spotiplot",
 }
 
+
 class Monitor:
     def __init__(self):
         print("Starting spotiplot monitor")
