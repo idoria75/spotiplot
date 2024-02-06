@@ -688,16 +688,12 @@ class Monitor:
                 for i in range(len(rows) - 1):
                     track_playback_time = 0
 
-                    # for i in range(10):
                     interval = rows[i + 1][4] - rows[i][4]
                     interval_ms = interval.total_seconds() * 1000
-                    print("---")
-                    # print(rows[i])
-                    # print("Activity {}: {}".format(rows[i][0], interval))
                     t = self.get_track_from_id(rows[i][2])
-                    print("Updating activity {}".format(t))
 
-                    # td = timedelta(milliseconds=t.duration_ms)
+                    print("---")
+                    print("Updating activity {}".format(t))
 
                     percentage = 100 * interval_ms / (t.duration_ms)
 
@@ -707,19 +703,12 @@ class Monitor:
                     #     )
                     # )
 
-                    # print("Track duration: {}".format(t.duration_ms))
-
-                    # TODO: If > 100%, maybe played more than once?
-                    # TODO: How to proceed if track was skipped?
-
                     if percentage > 90:
                         # print("Played full track!")
                         track_playback_time = int(t.duration_ms)
 
                     else:
                         track_playback_time = int(interval_ms)
-
-                    # print("final playback time: {}".format(track_playback_time))
 
                     update_query = """UPDATE listening_activity
                                 SET playback_duration_ms = %s
@@ -733,7 +722,6 @@ class Monitor:
                     conn.commit()
 
         except BaseException as e:
-
             print("*** Error while updating playback_duration_ms", e)
 
         cursor.close()
@@ -743,6 +731,7 @@ class Monitor:
 if __name__ == "__main__":
     monitor = Monitor()
     # monitor.fix_playback_times()
+    # exit()
 
     while True:
         try:
