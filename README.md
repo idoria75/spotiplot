@@ -31,7 +31,9 @@ MYSQL_ROOT_PASSWORD: sample_root_password
 
 ## Handling Spotify credentials
 
-It will also be necessary to create a file to store the Spotify credentials: `app/spotiplot.env`. The file should be populated with the information available on your [Spotify dashboard](https://developer.spotify.com/dashboard). A default file named `default_spotiplot.env` is included in the project (inside the `app` folder), and can be used as a reference:
+To use Spotiplot, it is necessary to create an application on your [Spotify Developer Dashboard](https://developer.spotify.com/dashboard). You can create your own app name, description and website. Set the Redirect URI to `'http://0.0.0.0:8083'`, as it is the value expected by the Docker container. If this is set to a different value, modify the docker compose and the authenticator script accordingly.
+
+It will also be necessary to create a file to store the Spotify credentials: `app/spotiplot.env`. The file should be populated with the information available on your personal developer dashboard. A default file named `default_spotiplot.env` is included in the project (inside the `app` folder), and can be used as a reference:
 
 ```yaml
 credentials:
