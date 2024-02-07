@@ -39,8 +39,7 @@ It will also be necessary to create a file to store the Spotify credentials: `ap
 credentials:
     client_id: '<client_id>' 
     client_secret: '<client_secret>' 
-    redirect_uri: '<redirect_uri>'
-
+    redirect_uri: 'http://0.0.0.0:8083'
 ```
 
 ## Building the Docker Image
