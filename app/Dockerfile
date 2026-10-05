@@ -11,5 +11,6 @@ COPY authenticator.py /app/
 COPY spotiplot.env /app/
 
 COPY monitor.py /app/
+COPY track.py /app/
 
 CMD ["python", "authenticator.py"]
